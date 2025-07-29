@@ -1,0 +1,17 @@
+# .gitignore
+
+# Virtual environment
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Django sensitive files
+*.py[cod]
+*.sqlite3
+finance_adviser/settings.py  # Ignore because it has your password
+
+# Other
+*.log
+.env

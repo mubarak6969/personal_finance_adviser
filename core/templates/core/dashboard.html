@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Personal Finance Adviser</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+</head>
+<body>
+    <div class="container d-flex justify-content-center align-items-center min-vh-100">
+        <div class="card p-4 shadow-lg">
+            <h2 class="text-center mb-4 welcome-message">Welcome, {{ username }}!</h2>
+            <p class="text-center">This is your personal finance dashboard.</p>
+            <button id="link-btn" class="btn btn-primary w-100 mb-3">Connect Bank Account</button>
+            <a href="{% url 'core:login' %}" class="btn btn-outline-primary w-100">Logout</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+    <script>
+        async function initializePlaid() {
+            const response = await fetch("{% url 'core:plaid_link_token' %}", {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            const linkHandler = Plaid.create({
+                token: data.link_token,
+                onSuccess: async (public_token, metadata) => {
+                    const exchangeResponse = await fetch("{% url 'core:plaid_exchange_token' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: 'public_token=' + public_token
+                    });
+                    const exchangeData = await exchangeResponse.json();
+                    if (exchangeData.status === 'success') {
+                        alert('Bank account connected successfully!');
+                    } else {
+                        alert('Error: ' + exchangeData.error);
+                    }
+                },
+                onExit: (err, metadata) => {
+                    if (err) {
+                        alert('Plaid Link exited: ' + err);
+                    }
+                }
+            });
+            document.getElementById('link-btn').onclick = () => linkHandler.open();
+        }
+        window.onload = initializePlaid;
+    </script>
+</body>
+</html>
