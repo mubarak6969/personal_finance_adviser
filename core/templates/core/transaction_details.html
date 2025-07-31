@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Details - Personal Finance Adviser</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a202c;
+                --card-bg: rgba(30, 41, 59, 0.9);
+                --text: #e2e8f0;
+                --card-hover: rgba(40, 50, 70, 0.9);
+            }
+        }
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg: #edf2f7;
+                --card-bg: rgba(255, 255, 255, 0.9);
+                --text: #2d3748;
+                --card-hover: #e2e8f0;
+            }
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2), -5px -5px 15px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .transaction-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .transaction-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="card w-full max-w-4xl p-6 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 animate-fade-in">Transaction Details</h1>
+        <div class="flex justify-between mb-4">
+            <a href="{% url 'core:dashboard' %}" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300 animate-fade-in">Back to Dashboard</a>
+            <input type="text" id="filter-input" placeholder="Filter by name..." class="p-2 rounded-lg bg-gray-800 bg-opacity-50 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="space-y-4">
+            {% for trans in transactions %}
+            <div class="transaction-card p-4 bg-var(--card-hover) rounded-lg cursor-pointer">
+                <div class="flex justify-between">
+                    <span class="font-medium">{{ trans.name }}</span>
+                    <span>${{ trans.amount }}</span>
+                </div>
+                <div class="text-sm text-var(--text-secondary)">{{ trans.date }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+        function animateFadeIn() {
+            const elements = document.querySelectorAll('.animate-fade-in');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
+        }
+        document.getElementById('filter-input').addEventListener('input', function(e) {
+            const filter = e.target.value.toLowerCase();
+            document.querySelectorAll('.transaction-card').forEach(card => {
+                const name = card.querySelector('span').textContent.toLowerCase();
+                card.style.display = name.includes(filter) ? 'block' : 'none';
+            });
+        });
+        window.onload = animateFadeIn;
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</body>
+</html>
