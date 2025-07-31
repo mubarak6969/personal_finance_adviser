@@ -124,11 +124,16 @@ def plaid_get_transactions(request):
         # Calculate summary
         total_income = sum(t.amount for t in transactions if t.amount > 0)
         total_expenses = abs(sum(t.amount for t in transactions if t.amount < 0))
-        logger.info(f"Calculated totals: Income=${total_income:.2f}, Expenses=${total_expenses:.2f}, Transactions={len(transactions)}")
+        # Get budget from request (default to 0 if not provided)
+        budget = float(request.GET.get('budget', 0))
+        budget_status = "Within Budget" if total_expenses <= budget else f"Over Budget by ${total_expenses - budget:.2f}"
+        logger.info(f"Calculated totals: Income=${total_income:.2f}, Expenses=${total_expenses:.2f}, Budget=${budget:.2f}, Status={budget_status}")
         return JsonResponse({
             'transactions': [{'name': t.name, 'amount': t.amount, 'date': t.date} for t in transactions],
             'total_income': total_income,
-            'total_expenses': total_expenses
+            'total_expenses': total_expenses,
+            'budget': budget,
+            'budget_status': budget_status
         })
     except UserProfile.DoesNotExist:
         return JsonResponse({'error': 'No profile found. Please connect a bank account first.'}, status=400)

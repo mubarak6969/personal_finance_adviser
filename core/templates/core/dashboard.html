@@ -17,6 +17,11 @@
                 <h4>Summary:</h4>
                 <p id="total-income">Total Income: $0.00</p>
                 <p id="total-expenses">Total Expenses: $0.00</p>
+                <div class="mb-3">
+                    <label for="budget-input" class="form-label">Set Budget ($):</label>
+                    <input type="number" class="form-control" id="budget-input" placeholder="Enter budget" min="0" step="0.01">
+                </div>
+                <p id="budget-status">Budget Status: Not Set</p>
             </div>
             <button id="link-btn" class="btn btn-primary w-100 mb-3">Connect Bank Account</button>
             <button id="trans-btn" class="btn btn-success w-100 mb-3">View Transactions</button>
@@ -66,7 +71,8 @@
             document.getElementById('link-btn').onclick = () => linkHandler.open();
 
             document.getElementById('trans-btn').onclick = async () => {
-                const response = await fetch("{% url 'core:plaid_get_transactions' %}", {
+                const budget = document.getElementById('budget-input').value || 0;
+                const response = await fetch(`{% url 'core:plaid_get_transactions' %}?budget=${budget}`, {
                     method: 'GET',
                     headers: {
                         'X-CSRFToken': '{{ csrf_token }}'
@@ -82,9 +88,10 @@
                     });
                     html += '</ul>';
                     document.getElementById('trans-list').innerHTML = html;
-                    // Update summary with specific IDs
+                    // Update summary
                     document.getElementById('total-income').textContent = `Total Income: $${data.total_income.toFixed(2)}`;
                     document.getElementById('total-expenses').textContent = `Total Expenses: $${data.total_expenses.toFixed(2)}`;
+                    document.getElementById('budget-status').textContent = `Budget Status: ${data.budget_status}`;
                 }
             };
         }
