@@ -1,4 +1,3 @@
-# core/views.py
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import UserCreationForm
@@ -6,7 +5,8 @@ from django.http import JsonResponse
 from django.conf import settings
 import plaid
 import logging
-from datetime import date  # Added for date objects
+from datetime import date
+from .models import UserProfile  # Import the new model
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -36,9 +36,6 @@ client = plaid_api.PlaidApi(plaid_api.ApiClient(
     )
 ))
 
-# Store access tokens (temporary in-memory solution)
-access_tokens = {}
-
 def login_view(request):
     if request.method == 'POST':
         username = request.POST['username']
@@ -58,7 +55,7 @@ def register_view(request):
             form.save()
             return redirect('core:login')
         else:
-            return render(request, 'core/register.html', {'form': form})  # Fixed syntax
+            return render(request, 'core/register.html', {'form': form})
     return render(request, 'core/register.html', {'form': UserCreationForm()})
 
 def dashboard_view(request):
@@ -95,8 +92,10 @@ def plaid_exchange_token(request):
             )
             exchange_response = client.item_public_token_exchange(exchange_request)
             access_token = exchange_response['access_token']
-            user_id = str(request.user.id)
-            access_tokens[user_id] = access_token  # Ensure token is saved
+            user_id = request.user.id
+            profile, created = UserProfile.objects.get_or_create(user_id=user_id)
+            profile.plaid_access_token = access_token
+            profile.save()
             logger.info(f"Public token exchanged successfully for user {user_id}, access_token={access_token[:4]}... saved")
             return JsonResponse({'status': 'success', 'access_token': access_token})
         except plaid.ApiException as e:
@@ -107,22 +106,25 @@ def plaid_exchange_token(request):
 def plaid_get_transactions(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'User not authenticated'}, status=401)
-    user_id = str(request.user.id)
-    logger.info(f"Checking transactions for user_id={user_id}, access_tokens={access_tokens}")
-    if user_id not in access_tokens or not access_tokens[user_id]:
-        return JsonResponse({'error': 'No access token available. Please connect a bank account first.'}, status=400)
+    user_id = request.user.id
+    logger.info(f"Checking transactions for user_id={user_id}")
     try:
-        access_token = access_tokens[user_id]
+        profile = UserProfile.objects.get(user_id=user_id)
+        access_token = profile.plaid_access_token
+        if not access_token:
+            return JsonResponse({'error': 'No access token available. Please connect a bank account first.'}, status=400)
         request_data = TransactionsGetRequest(
             access_token=access_token,
-            start_date=date(2024, 7, 29),  # Converted to date object
-            end_date=date(2025, 7, 29),    # Converted to date object
+            start_date=date(2024, 7, 29),
+            end_date=date(2025, 7, 29),
             options=TransactionsGetRequestOptions()
         )
         response = client.transactions_get(request_data)
         transactions = response['transactions']
         logger.info(f"Fetched {len(transactions)} transactions for user {user_id}")
         return JsonResponse({'transactions': [{'name': t.name, 'amount': t.amount, 'date': t.date} for t in transactions]})
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'error': 'No profile found. Please connect a bank account first.'}, status=400)
     except plaid.ApiException as e:
         logger.error(f"Plaid API error: {str(e)}")
         return JsonResponse({'error': str(e)}, status=400)
