@@ -13,7 +13,14 @@
         <div class="card p-4 shadow-lg">
             <h2 class="text-center mb-4 welcome-message">Welcome, {{ username }}!</h2>
             <p class="text-center">This is your personal finance dashboard.</p>
+            <div class="mb-3" id="summary-section">
+                <h4>Summary:</h4>
+                <p id="total-income">Total Income: $0.00</p>
+                <p id="total-expenses">Total Expenses: $0.00</p>
+            </div>
             <button id="link-btn" class="btn btn-primary w-100 mb-3">Connect Bank Account</button>
+            <button id="trans-btn" class="btn btn-success w-100 mb-3">View Transactions</button>
+            <div id="trans-list" class="mt-3"></div>
             <a href="{% url 'core:login' %}" class="btn btn-outline-primary w-100">Logout</a>
         </div>
     </div>
@@ -57,6 +64,29 @@
                 }
             });
             document.getElementById('link-btn').onclick = () => linkHandler.open();
+
+            document.getElementById('trans-btn').onclick = async () => {
+                const response = await fetch("{% url 'core:plaid_get_transactions' %}", {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                if (data.error) {
+                    document.getElementById('trans-list').innerHTML = `<p class="text-danger">Error: ${data.error}</p>`;
+                } else {
+                    let html = '<h4>Transactions:</h4><ul>';
+                    data.transactions.forEach(trans => {
+                        html += `<li>${trans.name} - $${trans.amount} on ${trans.date}</li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('trans-list').innerHTML = html;
+                    // Update summary with specific IDs
+                    document.getElementById('total-income').textContent = `Total Income: $${data.total_income.toFixed(2)}`;
+                    document.getElementById('total-expenses').textContent = `Total Expenses: $${data.total_expenses.toFixed(2)}`;
+                }
+            };
         }
         window.onload = initializePlaid;
     </script>

@@ -121,8 +121,15 @@ def plaid_get_transactions(request):
         )
         response = client.transactions_get(request_data)
         transactions = response['transactions']
-        logger.info(f"Fetched {len(transactions)} transactions for user {user_id}")
-        return JsonResponse({'transactions': [{'name': t.name, 'amount': t.amount, 'date': t.date} for t in transactions]})
+        # Calculate summary
+        total_income = sum(t.amount for t in transactions if t.amount > 0)
+        total_expenses = abs(sum(t.amount for t in transactions if t.amount < 0))
+        logger.info(f"Calculated totals: Income=${total_income:.2f}, Expenses=${total_expenses:.2f}, Transactions={len(transactions)}")
+        return JsonResponse({
+            'transactions': [{'name': t.name, 'amount': t.amount, 'date': t.date} for t in transactions],
+            'total_income': total_income,
+            'total_expenses': total_expenses
+        })
     except UserProfile.DoesNotExist:
         return JsonResponse({'error': 'No profile found. Please connect a bank account first.'}, status=400)
     except plaid.ApiException as e:
